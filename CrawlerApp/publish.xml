@@ -1,0 +1,30 @@
+﻿<publishData>
+    <publishProfile profileName="worker2703 - Web Deploy"
+                    publishMethod="MSDeploy"
+                    publishUrl="worker2703.scm.azurewebsites.net:443"
+                    msdeploySite="worker2703"
+                    userName="$worker2703"
+                    userPWD="uNd1QDNjc5HmahbWglDqQJh8YaXqQJfCf5Wy7vKWr6g6SRw9YY8Jim2rnvcS"
+                    destinationAppUrl="https://worker2703.azurewebsites.net"
+                    SQLServerDBConnectionString="" mySQLDBConnectionString="" hostingProviderForumLink=""
+                    controlPanelLink="http://windows.azure.com" webSystem="WebSites">
+        <databases/>
+    </publishProfile>
+    <publishProfile profileName="worker2703 - FTP" publishMethod="FTP"
+                    publishUrl="ftps://waws-prod-am2-391.ftp.azurewebsites.windows.net/site/wwwroot"
+                    ftpPassiveMode="True" userName="worker2703\$worker2703"
+                    userPWD="uNd1QDNjc5HmahbWglDqQJh8YaXqQJfCf5Wy7vKWr6g6SRw9YY8Jim2rnvcS"
+                    destinationAppUrl="https://worker2703.azurewebsites.net" SQLServerDBConnectionString=""
+                    mySQLDBConnectionString="" hostingProviderForumLink="" controlPanelLink="http://windows.azure.com"
+                    webSystem="WebSites">
+        <databases/>
+    </publishProfile>
+    <publishProfile profileName="worker2703 - Zip Deploy" publishMethod="ZipDeploy"
+                    publishUrl="worker2703.scm.azurewebsites.net:443" userName="$worker2703"
+                    userPWD="uNd1QDNjc5HmahbWglDqQJh8YaXqQJfCf5Wy7vKWr6g6SRw9YY8Jim2rnvcS"
+                    destinationAppUrl="https://worker2703.azurewebsites.net" SQLServerDBConnectionString=""
+                    mySQLDBConnectionString="" hostingProviderForumLink="" controlPanelLink="http://windows.azure.com"
+                    webSystem="WebSites">
+        <databases/>
+    </publishProfile>
+</publishData>

@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crawler.Core", "Crawler.Cor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crawler.Tests", "Crawler.Tests\Crawler.Tests.csproj", "{DE3DF046-FD93-4D1F-A02B-16BA12CE9595}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crawler.Host", "Crawler.Host\Crawler.Host.csproj", "{65035349-8804-40DC-968A-F1CCA722AE84}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{DE3DF046-FD93-4D1F-A02B-16BA12CE9595}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DE3DF046-FD93-4D1F-A02B-16BA12CE9595}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DE3DF046-FD93-4D1F-A02B-16BA12CE9595}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65035349-8804-40DC-968A-F1CCA722AE84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65035349-8804-40DC-968A-F1CCA722AE84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65035349-8804-40DC-968A-F1CCA722AE84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65035349-8804-40DC-968A-F1CCA722AE84}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
