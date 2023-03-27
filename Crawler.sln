@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrawlerApp", "CrawlerApp\CrawlerApp.csproj", "{994DF2C0-53F2-4BA0-9809-55CB0A580626}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crawler.Core", "Crawler.Core\Crawler.Core.csproj", "{0706EFB1-D149-45BB-A3E8-BCC128EF7153}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crawler.Tests", "Crawler.Tests\Crawler.Tests.csproj", "{DE3DF046-FD93-4D1F-A02B-16BA12CE9595}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{994DF2C0-53F2-4BA0-9809-55CB0A580626}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{994DF2C0-53F2-4BA0-9809-55CB0A580626}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{994DF2C0-53F2-4BA0-9809-55CB0A580626}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{994DF2C0-53F2-4BA0-9809-55CB0A580626}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0706EFB1-D149-45BB-A3E8-BCC128EF7153}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0706EFB1-D149-45BB-A3E8-BCC128EF7153}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0706EFB1-D149-45BB-A3E8-BCC128EF7153}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0706EFB1-D149-45BB-A3E8-BCC128EF7153}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE3DF046-FD93-4D1F-A02B-16BA12CE9595}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE3DF046-FD93-4D1F-A02B-16BA12CE9595}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE3DF046-FD93-4D1F-A02B-16BA12CE9595}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE3DF046-FD93-4D1F-A02B-16BA12CE9595}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
