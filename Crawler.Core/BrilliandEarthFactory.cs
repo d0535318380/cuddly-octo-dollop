@@ -14,17 +14,18 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
     public Task<RingSummary[]> GetItemsAsync(string sourceUrl,  CancellationToken token = default)
     {
         var web = new HtmlWeb();
-        var rootDocument = web.Load(sourceUrl);
-        var instance = CreateInstance(rootDocument).ToArray();
-
+        var url = UriFromString(sourceUrl);
+        var rootDocument = web.Load(url);
+        var byMetal = CreateByMetal(rootDocument);
+        var byCarat = CreateByCarat(rootDocument);
+        var instance = byMetal.Union(byCarat).ToArray();
         
         foreach (var item in instance)
         {
             Parse(item);
         }
         
-        
-        return Task.FromResult(instance.ToArray());
+        return Task.FromResult(instance);
     }
 
     public RingSummary Parse(RingSummary item)
@@ -41,6 +42,8 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         GetProperties(item, doc);
 
         item.HtmlSource = doc.DocumentNode.InnerHtml;
+
+        Console.WriteLine($"{item.Upc} : {item.Title}");
         
         return item;
     }
@@ -63,15 +66,34 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
 
     private static void GetVisualContentItems(RingSummary item, HtmlDocument doc)
     {
-        var videoScript = doc.QuerySelector("#model_video script");
-        item.VisualContentItems.Add(new ContentItem()
+        try
         {
-            Type = ContentType.Jsonp,
-            Uri = UriFromString(videoScript.GetAttributeValue("src", string.Empty))
-        });
+            var videoScript = doc.QuerySelector("#model_video script");
+
+            if (videoScript is null)
+            {
+                return;
+            }
+
+            var url = UriFromString(videoScript.GetAttributeValue("src", string.Empty));
+            var video = new ContentItem()
+            {
+                Type = ContentType.Jsonp,
+                Uri = url
+            };
+            
+            item.VisualContentItems.Add(video);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        
     }
 
-    private static IEnumerable<RingSummary> CreateInstance(HtmlDocument htmlDoc)
+    
+    
+    private static IEnumerable<RingSummary> CreateByMetal(HtmlDocument htmlDoc)
     {
         var metals = htmlDoc
             .QuerySelector("ul.pdp-metals-select-redesign")
@@ -91,9 +113,40 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
                 Uri = UriFromString(node.GetAttributeValue("href", string.Empty))
             };
             
+
+            
             yield return instance;
         }
     }
+    
+    private static IEnumerable<RingSummary> CreateByCarat(HtmlDocument htmlDoc)
+    {
+        var carats = htmlDoc
+            .QuerySelector("ul.ir309-carats-select")
+            .QuerySelectorAll("a")
+            .Where(x=>!x.HasClass("active"));
+
+        foreach (var node in carats)
+        {
+            var url = node.GetAttributeValue("href", string.Empty);
+
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                continue;
+            }
+            
+            var web = new HtmlWeb();
+            var rootDocument = web.Load(UriFromString(url));
+
+            var items = CreateByMetal(rootDocument);
+
+            foreach (var item in items)
+            {
+                yield return item;
+            }
+        }
+    }
+    
 
     private static Uri UriFromString(string uri, Uri? baseUrl = default)
     {

@@ -122,7 +122,6 @@ public partial class BrilliantEarthFactory
             yield return new ContentItem()
             {
                 Type = ContentType.Image,
-                SizeCode = match.Groups["size"].Value,
                 Uri = UriFromString(match.Groups["link"].Value)
             };
         }

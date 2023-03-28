@@ -40,8 +40,6 @@ public class BrilliantEarthTests
         var factory = new BrilliantEarthFactory();
         var item = factory.Parse(items.First());
 
-        var jsonString = System.Text.Json.JsonSerializer.Serialize(item); 
-        
         item
             .Should()
             .NotBeNull();
@@ -89,20 +87,5 @@ public class BrilliantEarthTests
         var items = await factory.GetItemsAsync(url);
 
         return items;
-    }
-    
-    [Fact]
-    private async Task MathesItems()
-    {
-        var html = await File.ReadAllTextAsync(@"Data\BE1D6362P-9634461.html");
-        var item = new RingSummary
-        {
-            Sku = "BE1D6362P",
-            MetalCode = "18KW",
-            HtmlSource = html
-        };
-
-        await ImageDownloader.DownloadAsync(item);
-
     }
 }

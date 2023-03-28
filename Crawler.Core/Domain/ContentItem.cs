@@ -10,7 +10,6 @@ public struct ContentType
 
 public class ContentItem : ItemBase
 {
-    public string SizeCode { get; set; } = string.Empty;
     public ContentItem()
     {
         Type = ContentType.Image;
