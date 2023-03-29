@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -8,14 +9,20 @@ using Downloader;
 using HtmlAgilityPack;
 using HtmlAgilityPack.CssSelectors.NetCore;
 
-var sourceUrl = "https://www.brilliantearth.com/Gala-Diamond-Ring-White-Gold-BE1D6362P-9634461/";
+var stopWatch = new Stopwatch();
+
+stopWatch.Start();
+
+// var sourceUrl = "https://www.brilliantearth.com/Gala-Diamond-Ring-White-Gold-BE1D6362P-9634461/";
+var sourceUrl = "https://www.brilliantearth.com/Round-Diamond-Stud-Earrings-(1-ct.-tw.)-White-Gold-BE304RD100/";
 var factory = new BrilliantEarthFactory();
 var items = await factory.GetItemsAsync(sourceUrl);
 
 var ringSummaries = items as RingSummary[] ?? items.ToArray();
 await ImageDownloader.DownloadAsync(ringSummaries);
 
-
+stopWatch.Stop();
+Console.WriteLine(stopWatch.Elapsed.ToString("g"));
 Console.WriteLine("Press any key.......................");
 Console.ReadKey();
 return;

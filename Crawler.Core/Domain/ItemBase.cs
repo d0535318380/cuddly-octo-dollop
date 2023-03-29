@@ -12,5 +12,5 @@ public class ItemBase
     [JsonIgnore]
     public string HtmlSource { get; set; }
     public string Description { get; set; }
-    public Dictionary<string, string> Properties { get; set; } = new();
+    public Dictionary<string, string> Properties { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
