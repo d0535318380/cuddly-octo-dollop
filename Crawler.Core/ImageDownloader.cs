@@ -165,7 +165,7 @@ public class ImageDownloader
         var target = GetDirectory(item);
 
         target = Path.Combine(target, item.FileName ?? Path.GetFileName(item.Url));
-
+        
         await downloader
             .DownloadFileTaskAsync(
                 item.Url, target, token);

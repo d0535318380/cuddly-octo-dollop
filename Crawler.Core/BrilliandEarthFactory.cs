@@ -29,9 +29,9 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
             if (instance.Length == 0)
             {
                 attemps++;
-                Thread.Sleep(TimeSpan.FromSeconds(15));
+                Thread.Sleep(TimeSpan.FromSeconds(5));
             }
-        } while (attemps < 5);
+        } while (instance.Length == 0 && attemps < 5);
        
         
         foreach (var item in instance)
