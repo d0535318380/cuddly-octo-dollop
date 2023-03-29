@@ -17,4 +17,15 @@
       <ProjectReference Include="..\Crawler.Core\Crawler.Core.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Output" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Input\engagement-ring-diamond.txt" />
+      <Content Include="Input\engagement-ring-diamond.txt">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+
 </Project>

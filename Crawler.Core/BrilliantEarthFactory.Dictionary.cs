@@ -23,10 +23,11 @@ public partial class BrilliantEarthFactory
         "Round", "RD",
     };
 
-    public static readonly Dictionary<string, string> DiamondShapesMap = new()
+    public static readonly Dictionary<string, string> DiamondShapesMap = new(StringComparer.InvariantCultureIgnoreCase)
     {
         { "Princess", "Princess" },
         { "PR", "Princess" },
+        { "PC", "Princess" },
         { "Asscher", "Asscher" },
         { "AS", "Asscher" },
         { "Cushion", "Cushion" },
@@ -37,6 +38,7 @@ public partial class BrilliantEarthFactory
         { "HT", "Heart" },
         { "Pear", "Pear" },
         { "PE", "Pear" },
+        { "PS", "Pear" },
         { "Marquise", "Marquise" },
         { "MQ", "Marquise" },
         { "Radiant", "Radiant" },

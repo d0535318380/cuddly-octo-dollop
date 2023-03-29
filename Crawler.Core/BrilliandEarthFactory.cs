@@ -16,8 +16,8 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         var web = new HtmlWeb();
         var url = UriFromString(sourceUrl);
         var rootDocument = web.Load(url);
-        var byMetal = CreateByMetal(rootDocument);
-        var byCarat = CreateByCarat(rootDocument);
+        var byMetal = CreateByMetal(url, rootDocument);
+        var byCarat = CreateByCarat(url, rootDocument);
         var instance = byMetal.Union(byCarat).ToArray();
         
         foreach (var item in instance)
@@ -93,12 +93,24 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
 
     
     
-    private static IEnumerable<RingSummary> CreateByMetal(HtmlDocument htmlDoc)
+    private static IEnumerable<RingSummary> CreateByMetal(Uri url, HtmlDocument htmlDoc)
     {
+        var rootNode = htmlDoc.QuerySelector("ul.pdp-metals-select-redesign");
+
+        if (rootNode is null)
+        {
+            Console.WriteLine($"Metals not founds for {url.AbsolutePath}");
+            yield break;
+        }
+        
+        
+        
         var metals = htmlDoc
             .QuerySelector("ul.pdp-metals-select-redesign")
             .QuerySelectorAll("a");
 
+        Console.WriteLine("");
+        
         foreach (var node in metals)
         {
             var upc = node.Attributes["data-upc"].Value;
@@ -112,20 +124,38 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
                 MetalCode = parts.LastOrDefault(),
                 Uri = UriFromString(node.GetAttributeValue("href", string.Empty))
             };
-            
-
-            
             yield return instance;
         }
     }
-    
-    private static IEnumerable<RingSummary> CreateByCarat(HtmlDocument htmlDoc)
-    {
-        var carats = htmlDoc
-            .QuerySelector("ul.ir309-carats-select")
-            .QuerySelectorAll("a")
-            .Where(x=>!x.HasClass("active"));
 
+    private static IEnumerable<RingSummary> CreateByCarat(Uri uri, HtmlDocument htmlDoc)
+    {
+        try
+        {
+            return CreateByCaratInternal(uri, htmlDoc);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+    
+    private static IEnumerable<RingSummary> CreateByCaratInternal(Uri uri, HtmlDocument htmlDoc)
+    {
+        var rootNode = htmlDoc.QuerySelector("ul.ir309-carats-select");
+
+        if (rootNode == null)
+        {
+            Console.WriteLine($"Carats not founds for {uri.AbsolutePath}");
+
+            yield break;
+        }
+
+
+        var carats = rootNode.QuerySelectorAll("a")
+            .Where(x => !x.HasClass("active"));
+        
         foreach (var node in carats)
         {
             var url = node.GetAttributeValue("href", string.Empty);
@@ -138,7 +168,7 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
             var web = new HtmlWeb();
             var rootDocument = web.Load(UriFromString(url));
 
-            var items = CreateByMetal(rootDocument);
+            var items = CreateByMetal(uri, rootDocument);
 
             foreach (var item in items)
             {

@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel.Design;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -37,6 +39,7 @@ public class ImageDownloader
     private static async Task DownloadInternalAsync(RingSummary item, string path = "C:\\_Downloads",
         CancellationToken token = default)
     {
+        var stopWatch = new Stopwatch();
         var html = item.HtmlSource;
         var baseFolder = Path.Combine(path, item.Upc);
         var json = JsonSerializer.Serialize(item, new JsonSerializerOptions()
@@ -61,16 +64,24 @@ public class ImageDownloader
 
         imageItems = imageItems.Union(videos).ToArray();
         
+        stopWatch.Start();
+        
+        Console.WriteLine($"{item.Upc}, Items: {imageItems.Length} start");
+        
         if (!Directory.Exists(baseFolder))
         {
             Directory.CreateDirectory(baseFolder);
         }
         
-        
-        await File.WriteAllTextAsync(Path.Combine(baseFolder, $"{item.Upc}.json"), json, token);
+        await File.WriteAllTextAsync(
+            Path.Combine(baseFolder, $"{item.Upc}.json"), json, token);
 
         var options = new ParallelOptions() { MaxDegreeOfParallelism = 20 };
-        await Parallel.ForEachAsync(imageItems, options, DownloadImage);
+        await Parallel.ForEachAsync(
+            imageItems, options, DownloadImage);
+        
+        stopWatch.Stop();
+        Console.WriteLine($"{item.Upc}: {stopWatch.Elapsed:g} Items: {imageItems.Length} end");
     }
 
     private static async Task<DownloadItem[]> GetVideos(RingSummary item, string baseFolder)
@@ -111,10 +122,22 @@ public class ImageDownloader
         return items.ToArray();
     }
 
-    public static async Task DownloadAsync(IEnumerable<RingSummary> item, string path = "D:\\_Downloads",
+    public static async Task DownloadAsync(IEnumerable<RingSummary> item, string path = @".\Output",
         CancellationToken token = default)
     {
-        var tasks = item.Select(x => DownloadInternalAsync(x, path, token)).ToArray();
+        var tasks = item.Select(x =>
+            {
+                try
+                {
+                    return DownloadInternalAsync(x, path, token);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    throw;
+                }
+            }
+        ).ToArray();
 
         await Task.WhenAll(tasks);
     }
@@ -133,7 +156,7 @@ public class ImageDownloader
 
     private static async ValueTask DownloadItemInternal(DownloadItem item, CancellationToken token)
     {
-        Console.WriteLine(item.Url);
+        Console.WriteLine($"{item.RingSummary.Upc} : {item.Url}");
 
         var downloader = new DownloadService();
         var target = GetDirectory(item);
@@ -162,8 +185,15 @@ public class ImageDownloader
             size += "00";
         }
 
-        
-        shape = BrilliantEarthFactory.DiamondShapesMap[shape];
+        if (!BrilliantEarthFactory.DiamondShapesMap.ContainsKey(shape))
+        {
+            Console.WriteLine($"Shape not found: [{shape}] in {item.Url}");
+            shape = "Unknown";
+        }
+        else
+        {
+            shape = BrilliantEarthFactory.DiamondShapesMap[shape];
+        }
 
         var target = Path.Combine(item.BaseFolder, shape, size);
 
