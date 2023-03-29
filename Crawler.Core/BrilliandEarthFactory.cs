@@ -13,12 +13,26 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
 
     public Task<RingSummary[]> GetItemsAsync(string sourceUrl,  CancellationToken token = default)
     {
-        var web = new HtmlWeb();
         var url = UriFromString(sourceUrl);
-        var rootDocument = web.Load(url);
-        var byMetal = CreateByMetal(url, rootDocument);
-        var byCarat = CreateByCarat(url, rootDocument);
-        var instance = byMetal.Union(byCarat).ToArray();
+        var attemps = 0;
+        RingSummary[] instance; 
+
+
+        do
+        {
+            var web = new HtmlWeb();
+            var rootDocument = web.Load(url);
+            var byMetal = CreateByMetal(url, rootDocument);
+            var byCarat = CreateByCarat(url, rootDocument);
+            instance = byMetal.Union(byCarat).ToArray();
+
+            if (instance.Length == 0)
+            {
+                attemps++;
+                Thread.Sleep(TimeSpan.FromSeconds(15));
+            }
+        } while (attemps < 5);
+       
         
         foreach (var item in instance)
         {
