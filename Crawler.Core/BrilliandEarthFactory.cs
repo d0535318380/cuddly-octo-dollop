@@ -103,14 +103,10 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
             yield break;
         }
         
-        
-        
         var metals = htmlDoc
             .QuerySelector("ul.pdp-metals-select-redesign")
             .QuerySelectorAll("a");
 
-        Console.WriteLine("");
-        
         foreach (var node in metals)
         {
             var upc = node.Attributes["data-upc"].Value;

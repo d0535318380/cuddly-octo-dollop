@@ -28,7 +28,7 @@ public class ImageDownloader
     private static readonly Regex VideoLinksRegex = new Regex(
         "('|\")(?<link>(//|https://)[A-Z0-9\\.\\-/_]+)('|\")",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-    
+
     private static readonly Regex SizeRegex = new Regex("(?<size>\\d+)[_]?(ct|carat)",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
@@ -44,7 +44,7 @@ public class ImageDownloader
         var baseFolder = Path.Combine(path, item.Upc);
         var json = JsonSerializer.Serialize(item, new JsonSerializerOptions()
         {
-            WriteIndented =  true
+            WriteIndented = true
         });
         var imageItems = ImageLinksRegex.Matches(html)
             .Select(x => x.Groups["link"].Value)
@@ -63,23 +63,30 @@ public class ImageDownloader
         var videos = await GetVideos(item, baseFolder);
 
         imageItems = imageItems.Union(videos).ToArray();
-        
+
         stopWatch.Start();
-        
+
         Console.WriteLine($"{item.Upc}, Items: {imageItems.Length} start");
+        
+        
         
         if (!Directory.Exists(baseFolder))
         {
             Directory.CreateDirectory(baseFolder);
         }
-        
+
         await File.WriteAllTextAsync(
             Path.Combine(baseFolder, $"{item.Upc}.json"), json, token);
 
+        var timeStamp = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        await File.AppendAllLinesAsync(
+            Path.Combine(path, $"log-{timeStamp}.txt"), 
+            new [] { $"{item.Upc} : {item.Title} : {item.Uri}" });
+        
         var options = new ParallelOptions() { MaxDegreeOfParallelism = 20 };
         await Parallel.ForEachAsync(
             imageItems, options, DownloadImage);
-        
+
         stopWatch.Stop();
         Console.WriteLine($"{item.Upc}: {stopWatch.Elapsed:g} Items: {imageItems.Length} end");
     }
@@ -94,7 +101,7 @@ public class ImageDownloader
             var web = new HttpClient();
             var result = await web.GetStringAsync(contentItem.Uri);
             var matches = VideoLinksRegex.Matches(result);
-            
+
             foreach (Match match in matches)
             {
                 var link = match.Groups["link"].Value;
@@ -103,7 +110,7 @@ public class ImageDownloader
                 {
                     continue;
                 }
-                
+
                 items.Add(
                     new DownloadItem()
                     {
@@ -116,30 +123,26 @@ public class ImageDownloader
 
                 i++;
             }
-            
         }
 
         return items.ToArray();
     }
 
-    public static async Task DownloadAsync(IEnumerable<RingSummary> item, string path = @".\Output",
+    public static async Task DownloadAsync(IEnumerable<RingSummary> items, string path = @".\Output",
         CancellationToken token = default)
     {
-        var tasks = item.Select(x =>
+        foreach (var item in items)
+        {
+            try
             {
-                try
-                {
-                    return DownloadInternalAsync(x, path, token);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                    throw;
-                }
+                await DownloadInternalAsync(item, path, token);
             }
-        ).ToArray();
-
-        await Task.WhenAll(tasks);
+            catch (Exception e)
+            {
+                Console.WriteLine($"{item.Upc} : Download failed = {e.Message}");
+                Console.WriteLine(e);
+            }
+        }
     }
 
     private static async ValueTask DownloadImage(DownloadItem item, CancellationToken token)
@@ -160,21 +163,21 @@ public class ImageDownloader
 
         var downloader = new DownloadService();
         var target = GetDirectory(item);
-        
+
         target = Path.Combine(target, item.FileName ?? Path.GetFileName(item.Url));
 
         await downloader
             .DownloadFileTaskAsync(
                 item.Url, target, token);
     }
-    
+
     private static string GetDirectory(DownloadItem item)
     {
         if (!item.IsImage)
         {
             return item.BaseFolder;
         }
-        
+
         var shapeMatch = ShapeRegex.Match(item.Url);
         var sizeMatch = SizeRegex.Match(item.Url);
         var size = sizeMatch.Groups["size"].Value;
