@@ -1,6 +1,9 @@
 ﻿using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using HtmlAgilityPack.CssSelectors.NetCore;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
 
 namespace Crawler.Core;
 
@@ -11,17 +14,33 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
     private static readonly Uri? _baseUrl = new Uri("https://brilliantearth.com");
     private static readonly Regex _keyValuRegex = new(@"(?<key>[\w\s.,]+)\s+[:]\s+(?<value>.*)");
 
+    private static HtmlDocument TryLoadHtml(Uri url)
+    {
+        using WebDriver driver = new ChromeDriver();
+
+        driver
+            .Navigate()
+            .GoToUrl(url);
+
+        Thread.Sleep(10);
+        
+        var rootDocument = new HtmlDocument();
+        rootDocument.LoadHtml(driver.PageSource);
+        
+        return rootDocument;
+    }
+    
+    
     public Task<RingSummary[]> GetItemsAsync(string sourceUrl,  CancellationToken token = default)
     {
         var url = UriFromString(sourceUrl);
         var attemps = 0;
         RingSummary[] instance; 
 
-
         do
         {
-            var web = new HtmlWeb();
-            var rootDocument = web.Load(url);
+            var uri = new Uri(sourceUrl);
+            var rootDocument = TryLoadHtml(uri);
             var byMetal = CreateByMetal(url, rootDocument);
             var byCarat = CreateByCarat(url, rootDocument);
             instance = byMetal.Union(byCarat).ToArray();
@@ -29,7 +48,7 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
             if (instance.Length == 0)
             {
                 attemps++;
-                Thread.Sleep(TimeSpan.FromSeconds(5));
+                Thread.Sleep(TimeSpan.FromSeconds(10));
             }
         } while (instance.Length == 0 && attemps < 5);
        
@@ -44,13 +63,10 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
 
     public RingSummary Parse(RingSummary item)
     {
-        var web = new HtmlWeb();
-        var doc = web.Load(item.Uri);
-        
-        var node = doc.QuerySelector("#ir309-explanation");
+        var doc = TryLoadHtml(item.Uri);
 
-        item.Title = node.QuerySelector("h1").InnerText.Trim();
-        item.Description = node.QuerySelector("p.ir309-description").InnerText.Trim();
+        item.Title = doc.QuerySelector("h1").InnerText.Trim();
+        item.Description = doc.QuerySelector("p.ir309-description").InnerText.Trim();
 
         GetVisualContentItems(item, doc);
         GetProperties(item, doc);

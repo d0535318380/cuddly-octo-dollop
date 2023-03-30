@@ -21,19 +21,27 @@ public class DownloadItem
 
 public class ImageDownloader
 {
+    private static readonly Regex ProductRegex = new Regex(
+        "BE[A-Z0-9]+[-_]",
+        RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+ 
     private static readonly Regex ImageLinksRegex = new Regex(
-        "('|\")(?<link>(//|https://)image[.]brilliantearth[.]com[A-Z0-9\\.\\-/_]+)('|\")",
+        "('|\")(?<link>(//|https://)(image|css)[.]brilliantearth[.]com[A-Z0-9\\.\\-/_]+)('|\")",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     private static readonly Regex VideoLinksRegex = new Regex(
         "('|\")(?<link>(//|https://)[A-Z0-9\\.\\-/_]+)('|\")",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
-    private static readonly Regex SizeRegex = new Regex("(?<size>\\d+)[_]?(ct|carat)",
+    private static readonly Regex SizeRegex1 = new Regex("(?<size>\\d+)[_]?(ct|carat)",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     private static readonly Regex ShapeRegex = new Regex(
-        $"[_](?<shape>{string.Join("|", BrilliantEarthFactory.DiamondShapesMap.Keys)})[_]",
+        $"[_](?<shape>{string.Join("|", BrilliantEarthFactory.DiamondShapesMap.Keys)})[_]?",
+        RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+    private static readonly Regex SizeRegex2 = new Regex(
+        $"(?<shape>{string.Join("|", BrilliantEarthFactory.DiamondShapesMap.Keys)})(?<size>\\d+)",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     private static async Task DownloadInternalAsync(RingSummary item, string path = "C:\\_Downloads",
@@ -46,11 +54,12 @@ public class ImageDownloader
         {
             WriteIndented = true
         });
-        var imageItems = ImageLinksRegex.Matches(html)
+        var links = ImageLinksRegex.Matches(html)
             .Select(x => x.Groups["link"].Value)
             .Select(x => x.StartsWith("//") ? x.Replace("//", "https://") : x)
-            .Distinct()
-            .Where(x => SizeRegex.IsMatch(x))
+            .Distinct();
+        var imageItems = links
+            .Where(x => ProductRegex.IsMatch(x))
             .OrderBy(x => x)
             .Select(x => new DownloadItem
             {
@@ -67,9 +76,8 @@ public class ImageDownloader
         stopWatch.Start();
 
         Console.WriteLine($"{item.Upc}, Items: {imageItems.Length} start");
-        
-        
-        
+
+
         if (!Directory.Exists(baseFolder))
         {
             Directory.CreateDirectory(baseFolder);
@@ -80,9 +88,9 @@ public class ImageDownloader
 
         var timeStamp = DateTime.UtcNow.ToString("yyyy-MM-dd");
         await File.AppendAllLinesAsync(
-            Path.Combine(path, $"log-{timeStamp}.txt"), 
-            new [] { $"{item.Upc} : {item.Title} : {item.Uri}" });
-        
+            Path.Combine(path, $"log-{timeStamp}.txt"),
+            new[] { $"{item.Upc} : {item.Title} : {item.Uri}" });
+
         var options = new ParallelOptions() { MaxDegreeOfParallelism = 20 };
         await Parallel.ForEachAsync(
             imageItems, options, DownloadImage);
@@ -165,7 +173,7 @@ public class ImageDownloader
         var target = GetDirectory(item);
 
         target = Path.Combine(target, item.FileName ?? Path.GetFileName(item.Url));
-        
+
         await downloader
             .DownloadFileTaskAsync(
                 item.Url, target, token);
@@ -179,7 +187,7 @@ public class ImageDownloader
         }
 
         var shapeMatch = ShapeRegex.Match(item.Url);
-        var sizeMatch = SizeRegex.Match(item.Url);
+        var sizeMatch = SizeRegex1.IsMatch(item.Url) ? SizeRegex1.Match(item.Url) : SizeRegex2.Match(item.Url);
         var size = sizeMatch.Groups["size"].Value;
         var shape = shapeMatch.Groups["shape"].Value;
 
@@ -188,16 +196,26 @@ public class ImageDownloader
             size += "00";
         }
 
+        if (!sizeMatch.Success)
+        {
+            size = "";
+        }
+
         if (!BrilliantEarthFactory.DiamondShapesMap.ContainsKey(shape))
         {
             Console.WriteLine($"Shape not found: [{shape}] in {item.Url}");
-            shape = "Unknown";
+            shape = "__Images__";
         }
         else
         {
             shape = BrilliantEarthFactory.DiamondShapesMap[shape];
         }
 
+        if (!shapeMatch.Success)
+        {
+            size = string.Empty;
+        }
+        
         var target = Path.Combine(item.BaseFolder, shape, size);
 
         if (!Directory.Exists(target))
