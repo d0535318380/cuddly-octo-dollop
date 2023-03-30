@@ -8,6 +8,7 @@ const string outputFolder = "Output";
 // var url = "https://www.brilliantearth.com/Four-prong-Round-Diamond-Stud-Earrings-White-Gold-BE304RD-1151787/";
 // var url = "https://www.brilliantearth.com/Floating-Solitaire-Pendant-Platinum-BE403-1151865";
 
+
 var fromSourceFile = true;
 var sources = new[] { "engagements" };
 var sourceUrls = new[]
