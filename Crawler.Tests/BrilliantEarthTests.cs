@@ -5,18 +5,14 @@ using Downloader;
 using FluentAssertions;
 using HtmlAgilityPack;
 using HtmlAgilityPack.CssSelectors.NetCore;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 using Xunit.Abstractions;
 
 namespace Crawler.Tests;
 
 public class BrilliantEarthTests
 {
-    // private readonly ITestOutput _output;
-    //
-    // public BrilliantEarthTests(ITestOutput output)
-    // {
-    //     _output = output;
-    // }
     [Fact]
     public async Task GetItemsTest()
     {
@@ -32,6 +28,21 @@ public class BrilliantEarthTests
             .NotBeEmpty();
     }
 
+
+    [Fact]
+    public async Task WebDriverTest()
+    {
+        WebDriver driver = new ChromeDriver();
+        
+        driver
+            .Navigate()
+            .GoToUrl("https://embed.imajize.com/3739689?v=1679993171");
+
+        var source = driver.PageSource;
+        
+        Assert.NotNull(source);
+    }
+    
     [Fact]
     public async Task ParseItemsTest()
     {
