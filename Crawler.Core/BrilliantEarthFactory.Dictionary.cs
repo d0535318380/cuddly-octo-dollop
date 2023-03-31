@@ -11,12 +11,12 @@ public partial class BrilliantEarthFactory
 
     public static readonly HashSet<string> DiamondShapes = new()
     {
-        "Princess", "PR",
+        "Princess", "PR", "PC",
         "Asscher", "AS",
         "Cushion", "CU",
         "Emerald", "EM",
         "Heart", "HE",
-        "Pear", "PE",
+        "Pear", "PE", "PS",
         "Marquise", "MQ",
         "Radiant", "RA",
         "Oval", "OV",

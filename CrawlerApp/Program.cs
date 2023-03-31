@@ -10,10 +10,17 @@ const string outputFolder = "Output";
 
 
 var fromSourceFile = true;
+var config = new ImageDownloaderConfig()
+{
+    DownloadImages = true,
+    DownloadVideos = true,
+    DownloadView3d = true,
+};
+
 var sources = new[] { "engagements" };
 var sourceUrls = new[]
 {
-    "https://www.brilliantearth.com/Dewdrop-Diamond-Pendant-Silver-BE4D101D/"
+    "https://www.brilliantearth.com/Double-Hidden-Halo-Diamond-Ring-(1/6-ct.-tw.)-White-Gold-BE1D3410-12777085/"
 };
 
 var stopWatch = new Stopwatch();
@@ -34,7 +41,7 @@ foreach (var source in sources)
     {
         var factory = new BrilliantEarthFactory();
         var items = await factory.GetItemsAsync(url);
-        await ImageDownloader.DownloadAsync(items, itemsFolder);
+        await ImageDownloader.DownloadAsync(items, config);
     }
 }
 

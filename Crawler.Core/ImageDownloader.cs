@@ -6,8 +6,19 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks.Sources;
 using Downloader;
+using HtmlAgilityPack;
+using HtmlAgilityPack.CssSelectors.NetCore;
 
 namespace Crawler.Core;
+
+public class ImageDownloaderConfig
+{
+    public bool DownloadImages { get; set; } = true;
+    public bool DownloadVideos { get; set; } = true;
+    public bool DownloadView3d { get; set; } = true;
+    public bool SkipExisted { get; set; } = true;
+    public string Path { get; set; } = "Output";
+}
 
 public class DownloadItem
 {
@@ -15,8 +26,9 @@ public class DownloadItem
     public string BaseFolder { get; set; }
     public RingSummary RingSummary { get; set; }
     public string? FileName { get; set; }
-
     public bool IsImage { get; set; } = false;
+
+    private ImageDownloaderConfig Config { get; set; }
 }
 
 public class ImageDownloader
@@ -24,7 +36,7 @@ public class ImageDownloader
     private static readonly Regex ProductRegex = new Regex(
         "BE[A-Z0-9]+[-_]",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
- 
+
     private static readonly Regex ImageLinksRegex = new Regex(
         "('|\")(?<link>(//|https://)(image|css)[.]brilliantearth[.]com[A-Z0-9\\.\\-/_]+)('|\")",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
@@ -44,16 +56,68 @@ public class ImageDownloader
         $"(?<shape>{string.Join("|", BrilliantEarthFactory.DiamondShapesMap.Keys)})(?<size>\\d+)",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
-    private static async Task DownloadInternalAsync(RingSummary item, string path = "C:\\_Downloads",
+    private static async Task DownloadInternalAsync(
+        RingSummary item,
+        ImageDownloaderConfig? config = default,
         CancellationToken token = default)
     {
+        config ??= new ImageDownloaderConfig();
+
+        var path = config.Path;
         var stopWatch = new Stopwatch();
-        var html = item.HtmlSource;
         var baseFolder = Path.Combine(path, item.Upc);
         var json = JsonSerializer.Serialize(item, new JsonSerializerOptions()
         {
             WriteIndented = true
         });
+
+        var downloadItems = Array.Empty<DownloadItem>();
+
+        if (config.DownloadImages)
+        {
+            downloadItems = GetImages(item, baseFolder);
+        }
+
+        if (config.DownloadVideos)
+        {
+            var videos = await GetVideos(item, baseFolder);
+            downloadItems = downloadItems.Union(videos).ToArray();
+        }
+
+        if (config.DownloadView3d)
+        {
+            var view3ds = await GetView3d(item, baseFolder);
+            downloadItems = downloadItems.Union(view3ds).ToArray();
+        }
+
+        stopWatch.Start();
+
+        Console.WriteLine($"{item.Upc}, Items: {downloadItems.Length} start");
+
+        if (!Directory.Exists(baseFolder))
+        {
+            Directory.CreateDirectory(baseFolder);
+        }
+
+        await File.WriteAllTextAsync(
+            Path.Combine(baseFolder, $"{item.Upc}.json"), json, token);
+
+        var timeStamp = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        await File.AppendAllLinesAsync(
+            Path.Combine(path, $"log-{timeStamp}.txt"),
+            new[] { $"{item.Upc} : {item.Title} : {item.Uri}" }, token);
+
+        var options = new ParallelOptions() { MaxDegreeOfParallelism = 20 };
+        await Parallel.ForEachAsync(
+            downloadItems, options, DownloadImage);
+
+        stopWatch.Stop();
+        Console.WriteLine($"{item.Upc}: {stopWatch.Elapsed:g} Items: {downloadItems.Length} end");
+    }
+
+    private static DownloadItem[] GetImages(RingSummary item, string baseFolder)
+    {
+        var html = item.HtmlSource;
         var links = ImageLinksRegex.Matches(html)
             .Select(x => x.Groups["link"].Value)
             .Select(x => x.StartsWith("//") ? x.Replace("//", "https://") : x)
@@ -69,81 +133,133 @@ public class ImageDownloader
                 IsImage = true
             })
             .ToArray();
-        var videos = await GetVideos(item, baseFolder);
-
-        imageItems = imageItems.Union(videos).ToArray();
-
-        stopWatch.Start();
-
-        Console.WriteLine($"{item.Upc}, Items: {imageItems.Length} start");
-
-
-        if (!Directory.Exists(baseFolder))
-        {
-            Directory.CreateDirectory(baseFolder);
-        }
-
-        await File.WriteAllTextAsync(
-            Path.Combine(baseFolder, $"{item.Upc}.json"), json, token);
-
-        var timeStamp = DateTime.UtcNow.ToString("yyyy-MM-dd");
-        await File.AppendAllLinesAsync(
-            Path.Combine(path, $"log-{timeStamp}.txt"),
-            new[] { $"{item.Upc} : {item.Title} : {item.Uri}" });
-
-        var options = new ParallelOptions() { MaxDegreeOfParallelism = 20 };
-        await Parallel.ForEachAsync(
-            imageItems, options, DownloadImage);
-
-        stopWatch.Stop();
-        Console.WriteLine($"{item.Upc}: {stopWatch.Elapsed:g} Items: {imageItems.Length} end");
+        return imageItems;
     }
 
     private static async Task<DownloadItem[]> GetVideos(RingSummary item, string baseFolder)
     {
         var items = new List<DownloadItem>();
-
-        var i = 1;
-        foreach (var contentItem in item.VisualContentItems)
+        foreach (var contentItem in item.VisualContentItems.Where(x => x.Type == ContentType.Video))
         {
-            var web = new HttpClient();
-            var result = await web.GetStringAsync(contentItem.Uri);
-            var matches = VideoLinksRegex.Matches(result);
-
-            foreach (Match match in matches)
+            try
             {
-                var link = match.Groups["link"].Value;
+                var videos = await GetVideosInternalAsync(item, baseFolder, contentItem);
 
-                if (!link.EndsWith("bin", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    continue;
-                }
-
-                items.Add(
-                    new DownloadItem()
-                    {
-                        Url = link,
-                        BaseFolder = baseFolder,
-                        RingSummary = item,
-                        IsImage = false,
-                        FileName = $"video-{i}.mp4"
-                    });
-
-                i++;
+                items.AddRange(videos);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
             }
         }
 
         return items.ToArray();
     }
 
-    public static async Task DownloadAsync(IEnumerable<RingSummary> items, string path = @".\Output",
+    private static async Task<List<DownloadItem>> GetVideosInternalAsync(
+        RingSummary item,
+        string baseFolder,
+        ContentItem contentItem)
+    {
+        var i = 1;
+        var items = new List<DownloadItem>();
+        var web = new HttpClient();
+        var result = await web.GetStringAsync(contentItem.Uri);
+        var matches = VideoLinksRegex.Matches(result);
+
+        foreach (Match match in matches)
+        {
+            var link = match.Groups["link"].Value;
+
+            if (!link.EndsWith("bin", StringComparison.CurrentCultureIgnoreCase))
+            {
+                continue;
+            }
+
+            items.Add(
+                new DownloadItem()
+                {
+                    Url = link,
+                    BaseFolder = Path.Combine(baseFolder, "__Videos__"),
+                    RingSummary = item,
+                    IsImage = false,
+                    FileName = $"video-{i}.mp4"
+                });
+
+            i++;
+        }
+
+        return items;
+    }
+
+    private static async Task<DownloadItem[]> GetView3d(RingSummary item, string baseFolder)
+    {
+        var items = new List<DownloadItem>();
+        foreach (var contentItem in item.VisualContentItems.Where(x => x.Type == ContentType.View3d))
+        {
+            try
+            {
+                var videos = await GetVView3dInternalAsync(item, baseFolder, contentItem);
+
+                items.AddRange(videos);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        return items.ToArray();
+    }
+
+    private static async Task<List<DownloadItem>> GetVView3dInternalAsync(
+        RingSummary item,
+        string baseFolder,
+        ContentItem contentItem)
+    {
+        var i = 1;
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.LoadHtml(contentItem.HtmlSource);
+
+        var nodes = htmlDoc.QuerySelectorAll("img");
+
+        var items = nodes.Select(x =>
+        {
+            var json =
+                Teplates.VideoPattern
+                    .Replace("{0}", contentItem.Code)
+                    .Replace("{1}", x.GetAttributeValue("data-source", string.Empty));
+
+            json += "\r\n";
+            
+            var base64 =  Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(json));
+            var url = $"https://reflyster.imajize.com/{base64}";
+            
+            return new DownloadItem()
+            {
+                Url = url,
+                BaseFolder = Path.Combine(baseFolder, contentItem.Folder, "View3d"),
+                RingSummary = item,
+                IsImage = false,
+                FileName = x.GetAttributeValue("data-source", string.Empty)
+            };
+        }).ToList();
+            
+
+        return items;
+    }
+
+
+    public static async Task DownloadAsync(
+        IEnumerable<RingSummary> items,
+        ImageDownloaderConfig? config = default,
         CancellationToken token = default)
     {
         foreach (var item in items)
         {
             try
             {
-                await DownloadInternalAsync(item, path, token);
+                await DownloadInternalAsync(item, config, token);
             }
             catch (Exception e)
             {
@@ -165,7 +281,9 @@ public class ImageDownloader
         }
     }
 
-    private static async ValueTask DownloadItemInternal(DownloadItem item, CancellationToken token)
+    private static async ValueTask DownloadItemInternal(
+        DownloadItem item, 
+        CancellationToken token)
     {
         Console.WriteLine($"{item.RingSummary.Upc} : {item.Url}");
 
@@ -174,6 +292,11 @@ public class ImageDownloader
 
         target = Path.Combine(target, item.FileName ?? Path.GetFileName(item.Url));
 
+        if (File.Exists(target))
+        {
+            return;
+        }
+        
         await downloader
             .DownloadFileTaskAsync(
                 item.Url, target, token);
@@ -215,7 +338,7 @@ public class ImageDownloader
         {
             size = string.Empty;
         }
-        
+
         var target = Path.Combine(item.BaseFolder, shape, size);
 
         if (!Directory.Exists(target))

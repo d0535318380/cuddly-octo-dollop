@@ -5,7 +5,7 @@ namespace Crawler.Core;
 public class ItemBase
 {
     public string Id { get; set; }
-    public string Type { get; set; }
+    public ContentType Type { get; set; }
     public Uri Uri { get; set; }
     public string Title { get; set; }
     

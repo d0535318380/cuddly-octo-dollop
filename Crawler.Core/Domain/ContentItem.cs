@@ -1,17 +1,24 @@
-﻿namespace Crawler.Core;
+﻿using System.Text.RegularExpressions;
 
-public struct ContentType
+namespace Crawler.Core;
+
+public enum ContentType
 {
-    public const string Image = "image";
-    public const string Video = "video";
-    public const string Jsonp = "jsonp";
-    public const string Html = "html";
+    Image = 1,
+    Video ,
+    Jsonp,
+    View3d,
+    Html
 }
 
 public class ContentItem : ItemBase
 {
+    public string Folder { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+
     public ContentItem()
     {
         Type = ContentType.Image;
     }
+
 }
