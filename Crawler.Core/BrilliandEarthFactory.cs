@@ -4,6 +4,7 @@ using HtmlAgilityPack;
 using HtmlAgilityPack.CssSelectors.NetCore;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Safari;
 using OpenQA.Selenium.Support.UI;
 
 namespace Crawler.Core;
@@ -17,10 +18,10 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         @"product_video_dict[[]'(?<shape>[A-Z]+)'[]]\s*=\s*'(?<code>\d+)'",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
-
-    private static HtmlDocument TryLoadHtml(Uri url)
+    private WebDriver driver; 
+    private HtmlDocument TryLoadHtml(Uri url)
     {
-        using WebDriver driver = new ChromeDriver();
+      //  using WebDriver driver = new ChromeDriver();
 
         driver
             .Navigate()
@@ -34,12 +35,14 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         return rootDocument;
     }
 
-    public Task<RingSummary[]> GetItemsAsync(string sourceUrl, CancellationToken token = default)
+    public Task<RingSummary[]> GetItemsAsync(
+        string sourceUrl, 
+        CancellationToken token = default)
     {
         var url = UriFromString(sourceUrl);
         var attemps = 0;
         RingSummary[] instance;
-
+        driver = new SafariDriver();
         do
         {
             var uri = new Uri(sourceUrl);
@@ -61,6 +64,8 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
             Parse(item);
         }
 
+        driver.Dispose();
+        driver = null;
         return Task.FromResult(instance);
     }
 
