@@ -42,7 +42,7 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         var url = UriFromString(sourceUrl);
         var attemps = 0;
         RingSummary[] instance;
-        driver = new SafariDriver();
+        driver = new ChromeDriver();
         do
         {
             var uri = new Uri(sourceUrl);
