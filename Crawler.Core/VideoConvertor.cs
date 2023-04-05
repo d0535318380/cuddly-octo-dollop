@@ -10,6 +10,10 @@ public class VideoConvertor
 
     public static async Task ConvertFolderAsync(string sourceFolder = "Output", CancellationToken token = default)
     {
+        var videoConvertor = new VideoConvertor();
+        await videoConvertor.ConvertAsync(token: token);
+        return;
+        
         const string ffmpegFolder = "FFMpeg";
         if (!Directory.Exists(ffmpegFolder))
         {
@@ -21,14 +25,10 @@ public class VideoConvertor
                     Progress<ProgressInfo>(x =>
                         Console.WriteLine("Downloaded: {0} form {1}", x.DownloadedBytes, x.TotalBytes)));
         }
-        FFmpeg.SetExecutablesPath(ffmpegFolder);
+      //  FFmpeg.SetExecutablesPath(ffmpegFolder);
 
-        var videoConvertor = new VideoConvertor();
-
-        await videoConvertor.ConvertAsync();
-
+        
     }
-    
     
     public async Task ConvertAsync(string sourceFolder = "Output", CancellationToken token = default)
     {
