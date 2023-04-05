@@ -51,6 +51,7 @@ public class VideoConvertor
         var items = Directory
             .EnumerateDirectories(folder, "*.*", SearchOption.AllDirectories)
             .Where(x => x.EndsWith("View3d"))
+            .OrderBy(x=>x)
             .ToArray();
 
         foreach (var item in items)
@@ -98,7 +99,7 @@ public class VideoConvertor
             .BuildVideoFromImages(files)
             .SetOutput(outputFile)
             .UseMultiThread(true)
-            // .UseHardwareAcceleration(HardwareAccelerator.auto, VideoCodec.libx264, VideoCodec.libx264)
+        //    .UseHardwareAcceleration(HardwareAccelerator.dxva2, VideoCodec.h264, VideoCodec.h264)
             .AddParameter("-vf \"crop=trunc(iw/2)*2:trunc(ih/2)*2\",scale=1024:1024,setsar=1:1")
             .Start(token);
 
@@ -112,8 +113,22 @@ public class VideoConvertor
         Console.WriteLine("Finish: {0}", sourceFolder);
     }
 
+    private static Task ChangeSpeedAsync(string outputFile, double speed, CancellationToken token)
+    {
+        try
+        {
+            return ChangeSpeedInternalAsync(outputFile, speed, token);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            Console.WriteLine(outputFile);
+            return Task.CompletedTask;
+        }
+    }
 
-    private static async Task ChangeSpeedAsync(string source, double speed, CancellationToken token)
+
+    private static async Task ChangeSpeedInternalAsync(string source, double speed, CancellationToken token)
     {
         var inputFile = await FFmpeg.GetMediaInfo(source, token);
         var outputFolder = Path.GetDirectoryName(source);

@@ -17,8 +17,7 @@ public class ImageDownloaderConfig
     public bool DownloadVideos { get; set; } = true;
     public bool DownloadView3d { get; set; } = true;
     public bool SkipExisted { get; set; } = true;
-    public string Path { get; set; } = "Output";
-    public bool ConverVideo { get; set; } = true;
+    public string OutputFolder { get; set; } = "Output";
 }
 
 public class DownloadItem
@@ -64,7 +63,7 @@ public class ImageDownloader
     {
         config ??= new ImageDownloaderConfig();
 
-        var path = config.Path;
+        var path = config.OutputFolder;
         var stopWatch = new Stopwatch();
         var baseFolder = Path.Combine(path, item.Upc);
         var json = JsonSerializer.Serialize(item, new JsonSerializerOptions()
