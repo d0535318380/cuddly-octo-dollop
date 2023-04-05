@@ -5,7 +5,7 @@ const string sourceFolder = "Input";
 const string outputFolder = "Output";
 const bool convertVideo = true;
 const bool downloadImages = true;
-const bool fromSourceFile = true;
+const bool fromSourceFile = false;
 
 var config = new ImageDownloaderConfig()
 {
@@ -18,7 +18,7 @@ var config = new ImageDownloaderConfig()
 var sources = new[] { "engagements" };
 var sourceUrls = new[]
 {
-    "https://www.brilliantearth.com/Double-Hidden-Halo-Diamond-Ring-(1/6-ct.-tw.)-White-Gold-BE1D3410-12777085/"
+    "https://www.brilliantearth.com/Petite-Shared-Prong-Eternity-Diamond-Ring-(1/2-ct.-tw.)-Gold-BE2PD50R50/"
 };
 
 if (downloadImages)

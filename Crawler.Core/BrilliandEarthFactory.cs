@@ -4,8 +4,6 @@ using HtmlAgilityPack;
 using HtmlAgilityPack.CssSelectors.NetCore;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Safari;
-using OpenQA.Selenium.Support.UI;
 
 namespace Crawler.Core;
 
@@ -18,6 +16,13 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         @"product_video_dict[[]'(?<shape>[A-Z]+)'[]]\s*=\s*'(?<code>\d+)'",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
+    private static Regex VideoRegex = new Regex(
+        "(?<link>(//|https://)fast[.]wistia[.]com/embed/medias/[A-Z0-9]+[.]jsonp)", 
+        RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    
+    private static Regex SourceVideoRegex = new Regex(
+        @"var\s+setting_video_url\s*=\s*['](?<link>(//|https://)embed[.]imajize[.]com/(?<code>\d+)[?]v=\d+)[']\s*;", 
+        RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     private WebDriver driver; 
     private HtmlDocument TryLoadHtml(Uri url)
     {
@@ -104,14 +109,21 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
 
     private static void GetVisualContentItems(RingSummary item, HtmlDocument doc)
     {
-        var videoScript = doc.QuerySelector("#model_video script");
+        var videoScript = VideoRegex.Matches(doc.Text);
         var productCodes = View3dRegex.Matches(doc.Text);
+        HtmlWeb.PreRequestHandler handler = delegate(HttpWebRequest request)
+        {
+            request.Headers[HttpRequestHeader.AcceptEncoding] = "gzip, deflate";
+            request.AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip;
+            request.CookieContainer = new System.Net.CookieContainer();
+            return true;
+        };
 
         try
         {
-            if (videoScript is not null)
+            foreach (Match match in videoScript)
             {
-                var url = UriFromString(videoScript.GetAttributeValue("src", string.Empty));
+                var url = UriFromString(match.Groups["link"].Value);
                 var video = new ContentItem()
                 {
                     Type = ContentType.Jsonp,
@@ -129,28 +141,35 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
 
         try
         {
-            // var clientHandler = new HttpClientHandler() { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
-            // var client = new HttpClient(clientHandler);
-            //
-            // var response = await client.PostAsync(BaseUri, new FormUrlEncodedContent(parameters));
-            // var contents = await response.Content.ReadAsStringAsync();
-            //
-            // return contents;
-            HtmlWeb.PreRequestHandler handler = delegate(HttpWebRequest request)
-            {
-                request.Headers[HttpRequestHeader.AcceptEncoding] = "gzip, deflate";
-                request.AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip;
-                request.CookieContainer = new System.Net.CookieContainer();
-                return true;
-            };
 
+            var sourceUrl = SourceVideoRegex.Match(doc.Text);
+
+            if (sourceUrl.Success)
+            {
+                var webClient = new HtmlWeb();
+                webClient.PreRequest += handler;
+                var url = UriFromString(sourceUrl.Groups["link"].Value);
+                var html = webClient.Load(url); 
+                var video = new ContentItem
+                {
+                    Code = sourceUrl.Groups["code"].Value,
+                    Folder = string.Empty,
+                    Type = ContentType.View3d,
+                    HtmlSource = html.Text,
+                    Uri = url,
+                };
+
+                item.VisualContentItems.Add(video);
+            }
+            
+            
             foreach (Match match in productCodes)
             {
                 var webClient = new HtmlWeb();
                 webClient.PreRequest += handler;
                 var url = new Uri(
                     $"https://embed.imajize.com/{match.Groups["code"].Value}?v={DateTime.UnixEpoch.Microsecond}");
-                var html = webClient.Load(url); // TryLoadHtml(url);
+                var html = webClient.Load(url); 
                 var video = new ContentItem
                 {
                     Code = match.Groups["code"].Value,
