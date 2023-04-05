@@ -10,8 +10,11 @@ public class VideoConvertor
 
     public static async Task ConvertFolderAsync(string sourceFolder = "Output", CancellationToken token = default)
     {
+        Console.WriteLine(FFmpeg.ExecutablesPath);
+        
         var videoConvertor = new VideoConvertor();
-        await videoConvertor.ConvertAsync(token: token);
+        await videoConvertor.ConvertAsync(sourceFolder, token: token);
+        
         return;
         
         const string ffmpegFolder = "FFMpeg";
@@ -95,6 +98,7 @@ public class VideoConvertor
             .BuildVideoFromImages(files)
             .SetOutput(outputFile)
             .UseMultiThread(true)
+            // .UseHardwareAcceleration(HardwareAccelerator.auto, VideoCodec.libx264, VideoCodec.libx264)
             .AddParameter("-vf \"crop=trunc(iw/2)*2:trunc(ih/2)*2\",scale=1024:1024,setsar=1:1")
             .Start(token);
 
