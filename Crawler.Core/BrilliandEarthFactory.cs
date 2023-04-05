@@ -234,9 +234,9 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
 
     private static IEnumerable<RingSummary> CreateByCaratInternal(Uri uri, HtmlDocument htmlDoc)
     {
-        var rootNode = htmlDoc.QuerySelector("ul.ir309-carats-select");
+        var rootNode = htmlDoc.QuerySelectorAll("ul.ir309-carats-select a");
 
-        if (rootNode == null)
+        if (rootNode == null || !rootNode.Any())
         {
             Console.WriteLine($"Carats not founds for {uri.AbsolutePath}");
 

@@ -18,7 +18,8 @@ var config = new ImageDownloaderConfig()
 var sources = new[] { "engagements" };
 var sourceUrls = new[]
 {
-    "https://www.brilliantearth.com/Round-Diamond-Stud-Earrings-(1-ct.-tw.)-White-Gold-BE304RD100/"
+  //  "https://www.brilliantearth.com/Round-Diamond-Stud-Earrings-(1-ct.-tw.)-White-Gold-BE304RD100/"
+  "https://www.brilliantearth.com/Diamond-Tennis-Bracelet-(1-ct.-tw.)-White-Gold-BE5D10TB/"
 };
 
 if (downloadImages)
@@ -56,6 +57,6 @@ if (convertVideo)
 
 
 Console.WriteLine("Press any key.......................");
-Console.ReadKey();
+//Console.ReadKey();
 
 // var sourceUrl = "https://www.brilliantearth.com/Round-Diamond-Stud-Earrings-(1-ct.-tw.)-White-Gold-BE304RD100/";
