@@ -1,13 +1,12 @@
 ﻿using System.Diagnostics;
 using Crawler.Core;
+using Xabe.FFmpeg;
+using Xabe.FFmpeg.Downloader;
 
 const string sourceFolder = "Input";
 const string outputFolder = "Output";
-
-//var url = "https://www.brilliantearth.com/Luxe-Secret-Garden-Diamond-Ring-(3/4-ct.-tw.)-White-Gold-BE1D6352-12137267/";
-// var url = "https://www.brilliantearth.com/Four-prong-Round-Diamond-Stud-Earrings-White-Gold-BE304RD-1151787/";
-// var url = "https://www.brilliantearth.com/Floating-Solitaire-Pendant-Platinum-BE403-1151865";
-
+const bool convertVideo = true;
+const bool downloadImages = false;
 
 var fromSourceFile = true;
 var config = new ImageDownloaderConfig()
@@ -15,6 +14,7 @@ var config = new ImageDownloaderConfig()
     DownloadImages = true,
     DownloadVideos = true,
     DownloadView3d = true,
+    
 };
 
 var sources = new[] { "engagements" };
@@ -22,6 +22,17 @@ var sourceUrls = new[]
 {
     "https://www.brilliantearth.com/Double-Hidden-Halo-Diamond-Ring-(1/6-ct.-tw.)-White-Gold-BE1D3410-12777085/"
 };
+
+if (convertVideo)
+{
+    await VideoConvertor.ConvertFolderAsync();
+}
+
+if (!downloadImages)
+{
+    return;
+}
+
 
 var stopWatch = new Stopwatch();
 

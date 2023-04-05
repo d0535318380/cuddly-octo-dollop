@@ -18,6 +18,7 @@ public class ImageDownloaderConfig
     public bool DownloadView3d { get; set; } = true;
     public bool SkipExisted { get; set; } = true;
     public string Path { get; set; } = "Output";
+    public bool ConverVideo { get; set; } = true;
 }
 
 public class DownloadItem
