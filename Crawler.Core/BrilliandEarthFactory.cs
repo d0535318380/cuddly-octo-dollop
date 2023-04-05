@@ -16,11 +16,11 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         @"product_video_dict[[]'(?<shape>[A-Z]+)'[]]\s*=\s*'(?<code>\d+)'",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
-    private static Regex VideoRegex = new Regex(
+    private static Regex VideoRegex = new(
         "(?<link>(//|https://)fast[.]wistia[.]com/embed/medias/[A-Z0-9]+[.]jsonp)", 
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     
-    private static Regex SourceVideoRegex = new Regex(
+    private static Regex View3dSourceRegex = new Regex(
         @"var\s+setting_video_url\s*=\s*['](?<link>(//|https://)embed[.]imajize[.]com/(?<code>\d+)[?]v=\d+)[']\s*;", 
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     private WebDriver driver; 
@@ -126,7 +126,7 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
                 var url = UriFromString(match.Groups["link"].Value);
                 var video = new ContentItem()
                 {
-                    Type = ContentType.Jsonp,
+                    Type = ContentType.Video,
                     Uri = url
                 };
 
@@ -142,7 +142,7 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         try
         {
 
-            var sourceUrl = SourceVideoRegex.Match(doc.Text);
+            var sourceUrl = View3dSourceRegex.Match(doc.Text);
 
             if (sourceUrl.Success)
             {

@@ -18,7 +18,7 @@ var config = new ImageDownloaderConfig()
 var sources = new[] { "engagements" };
 var sourceUrls = new[]
 {
-    "https://www.brilliantearth.com/Petite-Shared-Prong-Eternity-Diamond-Ring-(1/2-ct.-tw.)-Gold-BE2PD50R50/"
+    "https://www.brilliantearth.com/Round-Diamond-Stud-Earrings-(1-ct.-tw.)-White-Gold-BE304RD100/"
 };
 
 if (downloadImages)
