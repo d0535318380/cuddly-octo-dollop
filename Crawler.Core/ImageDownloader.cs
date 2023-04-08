@@ -65,14 +65,11 @@ public class ImageDownloader
 
         var path = config.OutputFolder;
         var stopWatch = new Stopwatch();
-        var baseFolder = Path.Combine(path, item.Upc);
-        var json = JsonSerializer.Serialize(item, new JsonSerializerOptions()
-        {
-            WriteIndented = true
-        });
-
+        var baseFolder = Path.Combine(path, item.Category, item.Upc);
         var downloadItems = Array.Empty<DownloadItem>();
 
+        await ContentHelper.WriteAsync(item, config, token);
+        
         if (config.DownloadImages)
         {
             downloadItems = GetImages(item, baseFolder);
@@ -94,22 +91,16 @@ public class ImageDownloader
 
         Console.WriteLine($"{item.Upc}, Items: {downloadItems.Length} start");
 
-        if (!Directory.Exists(baseFolder))
-        {
-            Directory.CreateDirectory(baseFolder);
-        }
 
-        await File.WriteAllTextAsync(
-            Path.Combine(baseFolder, $"{item.Upc}.json"), json, token);
 
         var timeStamp = DateTime.UtcNow.ToString("yyyy-MM-dd");
         await File.AppendAllLinesAsync(
             Path.Combine(path, $"log-{timeStamp}.txt"),
             new[] { $"{item.Upc} : {item.Title} : {item.Uri}" }, token);
 
-        var options = new ParallelOptions() { MaxDegreeOfParallelism = 20 };
+        var options = new ParallelOptions() { MaxDegreeOfParallelism = 10 };
         await Parallel.ForEachAsync(
-            downloadItems, options, DownloadImage);
+            downloadItems, options, DownloadImageAsync);
 
         stopWatch.Stop();
         Console.WriteLine($"{item.Upc}: {stopWatch.Elapsed:g} Items: {downloadItems.Length} end");
@@ -269,7 +260,7 @@ public class ImageDownloader
         }
     }
 
-    private static async ValueTask DownloadImage(DownloadItem item, CancellationToken token)
+    private static async ValueTask DownloadImageAsync(DownloadItem item, CancellationToken token)
     {
         try
         {
@@ -296,6 +287,8 @@ public class ImageDownloader
         {
             return;
         }
+
+        downloader.Package.IsSupportDownloadInRange = true;
         
         await downloader
             .DownloadFileTaskAsync(

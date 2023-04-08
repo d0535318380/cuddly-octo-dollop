@@ -1,6 +1,5 @@
 ﻿using System.Text.RegularExpressions;
 using Xabe.FFmpeg;
-using Xabe.FFmpeg.Downloader;
 
 namespace Crawler.Core;
 
@@ -14,23 +13,6 @@ public class VideoConvertor
         
         var videoConvertor = new VideoConvertor();
         await videoConvertor.ConvertAsync(sourceFolder, token: token);
-        
-        return;
-        
-        const string ffmpegFolder = "FFMpeg";
-        if (!Directory.Exists(ffmpegFolder))
-        {
-            Directory.CreateDirectory(ffmpegFolder);
-            await FFmpegDownloader.GetLatestVersion(
-                FFmpegVersion.Official,
-                ffmpegFolder,
-                new
-                    Progress<ProgressInfo>(x =>
-                        Console.WriteLine("Downloaded: {0} form {1}", x.DownloadedBytes, x.TotalBytes)));
-        }
-      //  FFmpeg.SetExecutablesPath(ffmpegFolder);
-
-        
     }
     
     public async Task ConvertAsync(string sourceFolder = "Output", CancellationToken token = default)
@@ -46,7 +28,7 @@ public class VideoConvertor
         }
     }
 
-    private async Task ConvertItemAsync(string folder, CancellationToken token)
+    private static async Task ConvertItemAsync(string folder, CancellationToken token)
     {
         var items = Directory
             .EnumerateDirectories(folder, "*.*", SearchOption.AllDirectories)
@@ -99,7 +81,7 @@ public class VideoConvertor
             .BuildVideoFromImages(files)
             .SetOutput(outputFile)
             .UseMultiThread(true)
-        //    .UseHardwareAcceleration(HardwareAccelerator.dxva2, VideoCodec.h264, VideoCodec.h264)
+            .UseHardwareAcceleration(HardwareAccelerator.dxva2, VideoCodec.h264, VideoCodec.h264)
             .AddParameter("-vf \"crop=trunc(iw/2)*2:trunc(ih/2)*2\",scale=1024:1024,setsar=1:1")
             .Start(token);
 

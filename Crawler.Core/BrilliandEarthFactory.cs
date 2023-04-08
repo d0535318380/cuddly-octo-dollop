@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using HtmlAgilityPack.CssSelectors.NetCore;
@@ -7,10 +8,25 @@ using OpenQA.Selenium.Chrome;
 
 namespace Crawler.Core;
 
+public class ParserContext
+{
+    public Uri RootUri { get; set; }
+
+    public ConcurrentDictionary<Uri, RingSummary> Items = new();
+}
+
+
 public partial class BrilliantEarthFactory : IRingSummaryFactory
 {
-    private static readonly Uri? _baseUrl = new Uri("https://brilliantearth.com");
+    private static readonly Uri? BaseUrl = new("https://brilliantearth.com");
+    private WebDriver driver;
+    
+    #region Regex
 
+    public static Regex ProductRegex = new (
+        @"[""']sku[""']\s+[:]\s+[""'](?<code>BE[A-Z0-9]+)[-](?<metal>[0-9A-Z]{2,4})", 
+        RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    
     //var setting_video_url = '//embed.imajize.com/3739689?v=1679993171';
     private static readonly Regex View3dRegex = new(
         @"product_video_dict[[]'(?<shape>[A-Z]+)'[]]\s*=\s*'(?<code>\d+)'",
@@ -20,14 +36,21 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         "(?<link>(//|https://)fast[.]wistia[.]com/embed/medias/[A-Z0-9]+[.]jsonp)", 
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     
-    private static Regex View3dSourceRegex = new Regex(
+    private static Regex View3dSourceRegex = new(
         @"var\s+setting_video_url\s*=\s*['](?<link>(//|https://)embed[.]imajize[.]com/(?<code>\d+)[?]v=\d+)[']\s*;", 
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-    private WebDriver driver; 
+    
+    private static Regex WhiteSpaceRegex = new(
+        @"[\s\r\n]+", 
+        RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    
+    private static Regex CategoryRegex = new(
+        @"[""']og:category[""']\s+content=[""'](?<category>[A-Z0-9\s\-]+)[""']", 
+        RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    #endregion
+     
     private HtmlDocument TryLoadHtml(Uri url)
     {
-      //  using WebDriver driver = new ChromeDriver();
-
         driver
             .Navigate()
             .GoToUrl(url);
@@ -40,56 +63,108 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         return rootDocument;
     }
 
-    public Task<RingSummary[]> GetItemsAsync(
-        string sourceUrl, 
+    public async Task<RingSummary[]> GetItemsAsync(
+        string sourceUrl,
+        ImageDownloaderConfig? config = default,
         CancellationToken token = default)
     {
-        var url = UriFromString(sourceUrl);
-        var attemps = 0;
-        RingSummary[] instance;
+        config ??= new ImageDownloaderConfig();
+        
+        var uri = UriFromString(sourceUrl);
+        var context = new ParserContext()
+        {
+            RootUri = uri
+        };        
+
         driver = new ChromeDriver();
-        do
-        {
-            var uri = new Uri(sourceUrl);
-            var rootDocument = TryLoadHtml(uri);
-            var byMetal = CreateByMetal(url, rootDocument);
-            var byCarat = CreateByCarat(url, rootDocument);
-            instance = byMetal.Union(byCarat).ToArray();
 
-            if (instance.Length == 0)
-            {
-                attemps++;
-                Thread.Sleep(TimeSpan.FromSeconds(10));
-            }
-        } while (instance.Length == 0 && attemps < 5);
-
-
-        foreach (var item in instance)
-        {
-            Parse(item);
-        }
+        await LoadVariations(uri, context, config, token);
 
         driver.Dispose();
         driver = null;
-        return Task.FromResult(instance);
+        
+        Console.WriteLine($"Total items: {context.Items.Count}");
+        
+        return context.Items.Values.ToArray();
     }
 
-    public RingSummary Parse(RingSummary item)
+    private async Task LoadVariations(
+        Uri uri, 
+        ParserContext context, 
+        ImageDownloaderConfig? config,
+        CancellationToken token)
     {
-        var doc = TryLoadHtml(item.Uri);
+        var map = context.Items;
 
-        item.Title = doc.QuerySelector("h1").InnerText.Trim();
-        item.Description = doc.QuerySelector("p.ir309-description").InnerText.Trim();
+        if (map.ContainsKey(uri) && !string.IsNullOrWhiteSpace(map[uri].HtmlSource))
+        {
+            return;
+        }
+        
+        Console.WriteLine($"Parsing: {uri.AbsolutePath}");
+        
+        var item = CreateRingSummary(uri);
+        var relatedItemLinks = GetRelatedItemLinks(item, context);
+        
+        map[item.Uri] = item;
 
+        Console.WriteLine($"Parsed: {item.Upc}");
+        await ContentHelper.WriteAsync(item, config, token);
+        
+        foreach (var link in relatedItemLinks)
+        {
+            await LoadVariations(link, context, config, token);
+        }
+    }
+
+    private static IEnumerable<Uri> GetRelatedItemLinks(RingSummary item, ParserContext context)
+    {
+        // ir229-pdp-metals-select ir309-carats-select
+        // ir309-carats-select
+        // 
+        var doc = new HtmlDocument();
+        doc.LoadHtml(item.HtmlSource);
+        
+        var caratsItems = doc.QuerySelectorAll("ul.ir309-carats-select") ?? new List<HtmlNode>();
+        var metalItems = doc.QuerySelectorAll("ul.pdp-metals-select-redesign") ?? new List<HtmlNode>();
+
+        Uri[] links = metalItems
+            .Union(caratsItems)
+            .QuerySelectorAll("a")
+            .Select(x => x.GetAttributeValue("href", string.Empty))
+            .Select(x => UriFromString(x))
+            .Where(x => x is not null)
+            .Where(x => !context.Items.ContainsKey(x))
+            .ToArray();
+
+        return links;
+    }
+
+    private RingSummary CreateRingSummary(Uri uri)
+    {
+        var doc = TryLoadHtml(uri);
+        var match = ProductRegex.Match(doc.Text);
+        var category = CategoryRegex.Match(doc.Text);
+        var item = new RingSummary
+        {
+            Uri = uri,
+            Sku = match.Groups["code"].Value,
+            MetalCode = match.Groups["metal"].Value,
+            MetalName = match.Groups["metal"].Value,
+            HtmlSource = doc.Text,
+            Title = Normalize(doc.QuerySelector("h1")),
+            Description = Normalize(doc.QuerySelector("p.ir309-description")),
+            Category = Normalize(category.Groups["category"].Value)
+        };
+
+        item.Upc = $"{item.Sku}-{item.MetalCode}";
+        
         GetVisualContentItems(item, doc);
         GetProperties(item, doc);
-
-        item.HtmlSource = doc.DocumentNode.InnerHtml;
-
-        Console.WriteLine($"{item.Upc} : {item.Title}");
-
+        
         return item;
     }
+
 
     private static void GetProperties(ItemSummary summary, HtmlDocument doc)
     {
@@ -115,7 +190,7 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         {
             request.Headers[HttpRequestHeader.AcceptEncoding] = "gzip, deflate";
             request.AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip;
-            request.CookieContainer = new System.Net.CookieContainer();
+            request.CookieContainer = new CookieContainer();
             return true;
         };
 
@@ -188,95 +263,46 @@ public partial class BrilliantEarthFactory : IRingSummaryFactory
         }
     }
 
-    private static IEnumerable<RingSummary> CreateByMetal(Uri url, HtmlDocument htmlDoc)
-    {
-        var rootNode = htmlDoc.QuerySelector("ul.pdp-metals-select-redesign");
-
-        if (rootNode is null)
-        {
-            Console.WriteLine($"Metals not founds for {url.AbsolutePath}");
-            yield break;
-        }
-
-        var metals = htmlDoc
-            .QuerySelector("ul.pdp-metals-select-redesign")
-            .QuerySelectorAll("a");
-
-        foreach (var node in metals)
-        {
-            var upc = node.Attributes["data-upc"].Value;
-            var parts = upc.Split("-");
-            var instance = new RingSummary()
-            {
-                Id = node.GetAttributeValue("data-id", string.Empty),
-                Sku = parts.FirstOrDefault(),
-                Upc = upc,
-                MetalName = node.GetAttributeValue("data-metal", string.Empty),
-                MetalCode = parts.LastOrDefault(),
-                Uri = UriFromString(node.GetAttributeValue("href", string.Empty))
-            };
-            yield return instance;
-        }
-    }
-
-    private static IEnumerable<RingSummary> CreateByCarat(Uri uri, HtmlDocument htmlDoc)
+    private static Uri? UriFromString(string uri, Uri? baseUrl = default)
     {
         try
         {
-            return CreateByCaratInternal(uri, htmlDoc);
+            if (uri.StartsWith("//"))
+            {
+                uri = $"https:{uri}";
+            }
+
+            return uri.StartsWith("/")
+                ? new Uri(baseUrl ?? BaseUrl, uri)
+                : new Uri(uri);
         }
         catch (Exception e)
         {
+            Console.WriteLine($"Failed parse URI: {uri}");
             Console.WriteLine(e);
-            throw;
+            return null;
         }
+        
     }
 
-    private static IEnumerable<RingSummary> CreateByCaratInternal(Uri uri, HtmlDocument htmlDoc)
+    public static string Normalize(string source)
     {
-        var rootNode = htmlDoc.QuerySelectorAll("ul.ir309-carats-select a");
-
-        if (rootNode == null || !rootNode.Any())
+        if (string.IsNullOrWhiteSpace(source))
         {
-            Console.WriteLine($"Carats not founds for {uri.AbsolutePath}");
-
-            yield break;
+            return string.Empty;
         }
 
 
-        var carats = rootNode.QuerySelectorAll("a")
-            .Where(x => !x.HasClass("active"));
-
-        foreach (var node in carats)
-        {
-            var url = node.GetAttributeValue("href", string.Empty);
-
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                continue;
-            }
-
-            var web = new HtmlWeb();
-            var rootDocument = web.Load(UriFromString(url));
-
-            var items = CreateByMetal(uri, rootDocument);
-
-            foreach (var item in items)
-            {
-                yield return item;
-            }
-        }
+        return
+            WhiteSpaceRegex
+                .Replace(source, " ")
+                .Trim();
     }
-
-    private static Uri UriFromString(string uri, Uri? baseUrl = default)
+    public static string Normalize(HtmlNode source)
     {
-        if (uri.StartsWith("//"))
-        {
-            uri = $"https:{uri}";
-        }
-
-        return uri.StartsWith("/")
-            ? new Uri(baseUrl ?? _baseUrl, uri)
-            : new Uri(uri);
+        return
+            WhiteSpaceRegex
+                .Replace(source?.InnerText ?? string.Empty, " ")
+                .Trim();
     }
 }

@@ -2,6 +2,8 @@
 
 public interface IRingSummaryFactory
 {
-    Task<RingSummary[]>  GetItemsAsync(string sourceUrl, CancellationToken token = default);
-    RingSummary Parse(RingSummary item);
+    Task<RingSummary[]>  GetItemsAsync(
+        string sourceUrl, 
+        ImageDownloaderConfig? config = default, 
+        CancellationToken token = default);
 }
